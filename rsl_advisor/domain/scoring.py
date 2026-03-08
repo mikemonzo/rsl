@@ -258,13 +258,14 @@ def evaluate_new_artifact(
 
     for champion in champions:
         new_score = artifact_score_for_champion(champion, artifact)
-        current = equipped_map.get((champion.name.lower(), artifact.slot.lower()))
+        current = equipped_map.get((champion.champion_id.lower(), artifact.slot.lower()))
         current_score = artifact_score_for_champion(champion, current) if current else 0.0
         delta = round(new_score - current_score, 2)
 
         ranking.append(
             Recommendation(
-                champion=champion.name,
+                champion_id=champion.champion_id,
+                champion_name=champion.name,
                 role=champion.role,
                 new_score=new_score,
                 current_score=current_score,

@@ -10,6 +10,7 @@ def test_parse_substats_ignores_invalid_values():
 
 def test_evaluate_new_artifact_returns_sorted_ranking_by_delta_then_score():
     kael = Champion(
+        champion_id="kael-01",
         name="Kael",
         rarity="Rare",
         role="DPS / Farmer",
@@ -26,6 +27,7 @@ def test_evaluate_new_artifact_returns_sorted_ranking_by_delta_then_score():
         preferred_sets=["Lethal"],
     )
     rector = Champion(
+        champion_id="rector-01",
         name="Rector Drath",
         rarity="Epic",
         role="Support / Revive",
@@ -53,7 +55,7 @@ def test_evaluate_new_artifact_returns_sorted_ranking_by_delta_then_score():
         main_stat="HP%",
         main_value=50,
         substats={"DEF%": 10},
-        equipped_by="Kael",
+        equipped_by="kael-01",
     )
     new_gloves = Artifact(
         artifact_id="N1",
@@ -70,11 +72,11 @@ def test_evaluate_new_artifact_returns_sorted_ranking_by_delta_then_score():
     )
 
     equipped_map = {
-        ("kael", "gloves"): current_gloves_kael,
+        ("kael-01", "gloves"): current_gloves_kael,
     }
 
     ranking = evaluate_new_artifact(new_gloves, [kael, rector], equipped_map, top_n=2)
 
     assert len(ranking) == 2
-    assert ranking[0].champion == "Kael"
+    assert ranking[0].champion_name == "Kael"
     assert ranking[0].delta > ranking[1].delta

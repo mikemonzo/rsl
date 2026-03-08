@@ -13,7 +13,8 @@ from rsl_advisor.domain.scoring import normalise_stat_name
 class ChampionDB(SQLModel, table=True):
     __tablename__ = "champions"
 
-    name: str = Field(primary_key=True)
+    champion_id: str = Field(primary_key=True)
+    name: str
     rarity: str
     role: str
     level: int
@@ -49,6 +50,7 @@ class ArtifactDB(SQLModel, table=True):
 
 REQUIRED_DB_COLUMNS = {
     "champions": {
+        "champion_id",
         "name",
         "rarity",
         "role",
@@ -102,6 +104,7 @@ def init_db(db_path: str) -> None:
 
 def champion_to_db(champion: Champion) -> ChampionDB:
     return ChampionDB(
+        champion_id=champion.champion_id,
         name=champion.name,
         rarity=champion.rarity,
         role=champion.role,
@@ -122,6 +125,7 @@ def champion_to_db(champion: Champion) -> ChampionDB:
 
 def champion_from_db(row: ChampionDB) -> Champion:
     return Champion(
+        champion_id=row.champion_id,
         name=row.name,
         rarity=row.rarity,
         role=row.role,
@@ -192,7 +196,7 @@ def save_artifacts(artifacts: List[Artifact], db_path: str) -> None:
 
 def load_champions(db_path: str) -> List[Champion]:
     with Session(get_engine(db_path)) as session:
-        rows = session.exec(select(ChampionDB).order_by(ChampionDB.name)).all()
+        rows = session.exec(select(ChampionDB).order_by(ChampionDB.name, ChampionDB.champion_id)).all()
     return [champion_from_db(row) for row in rows]
 
 

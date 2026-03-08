@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 @dataclass
 class Champion:
+    champion_id: str
     name: str
     rarity: str
     role: str
@@ -41,7 +42,8 @@ class Artifact:
 
 @dataclass
 class Recommendation:
-    champion: str
+    champion_id: str
+    champion_name: str
     role: str
     new_score: float
     current_score: float

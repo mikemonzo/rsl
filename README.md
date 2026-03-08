@@ -100,6 +100,7 @@ pip install -r requirements-dev.txt
 
 ```bash
 .venv/bin/python rsl.py add-champion \
+  --champion-id "kael-01" \
   --name "Kael" \
   --rarity "Rare" \
   --role "DPS / Farmer" \
@@ -140,7 +141,7 @@ pip install -r requirements-dev.txt
 
 ```bash
 .venv/bin/python rsl.py edit-champion \
-  --name "Kael" \
+  --champion-id "kael-01" \
   --level 60 \
   --speed 175 \
   --preferred-sets "Lethal|Cruel|Perception" \
@@ -160,11 +161,33 @@ pip install -r requirements-dev.txt
   --db advisor.db
 ```
 
+### 10) Consulta de campeones desde SQLite
+
+```bash
+.venv/bin/python rsl.py list-champions \
+  --champion-id "kael" \
+  --role "DPS" \
+  --rarity "Rare" \
+  --db advisor.db
+```
+
+### 11) Consulta de artefactos desde SQLite
+
+```bash
+.venv/bin/python rsl.py list-artifacts \
+  --slot "boots" \
+  --set-name "Perception" \
+  --is-new true \
+  --db advisor.db
+```
+
 ### Opciones útiles
 
 - `--top-n`: cantidad de campeones a mostrar por artefacto.
 - `--db`: ruta del archivo SQLite.
 - `--source`: origen de datos (`db` o `csv`).
+- `list-champions`: filtros por `--champion-id`, `--name-contains`, `--role`, `--rarity`.
+- `list-artifacts`: filtros por `--artifact-id`, `--slot`, `--set-name`, `--equipped-by`, `--is-new`.
 
 ## Formato de entrada CSV
 
@@ -172,15 +195,15 @@ pip install -r requirements-dev.txt
 
 Columnas esperadas:
 
-- `name, rarity, role, level, stars, hp, atk, defense, speed, crit_rate, crit_damage, resistance, accuracy, preferred_sets, notes`
+- `champion_id, name, rarity, role, level, stars, hp, atk, defense, speed, crit_rate, crit_damage, resistance, accuracy, preferred_sets, notes`
 
 `preferred_sets` usa separador `|`.
 
 Ejemplo:
 
 ```csv
-name,rarity,role,level,stars,hp,atk,defense,speed,crit_rate,crit_damage,resistance,accuracy,preferred_sets,notes
-Kael,Rare,DPS / Farmer,60,6,24324,2966,1451,146,93,145,90,47,Lethal|Cruel,Farmer y daño general
+champion_id,name,rarity,role,level,stars,hp,atk,defense,speed,crit_rate,crit_damage,resistance,accuracy,preferred_sets,notes
+kael-01,Kael,Rare,DPS / Farmer,60,6,24324,2966,1451,146,93,145,90,47,Lethal|Cruel,Farmer y daño general
 ```
 
 ### artifacts.csv
@@ -188,6 +211,7 @@ Kael,Rare,DPS / Farmer,60,6,24324,2966,1451,146,93,145,90,47,Lethal|Cruel,Farmer
 Columnas esperadas:
 
 - `artifact_id, name, set_name, slot, rank, level, rarity, main_stat, main_value, substats, equipped_by, is_new`
+- `equipped_by` debe contener `champion_id` (no nombre).
 
 `substats` usa formato `STAT:valor|STAT:valor`.
 
@@ -195,7 +219,7 @@ Ejemplo:
 
 ```csv
 artifact_id,name,set_name,slot,rank,level,rarity,main_stat,main_value,substats,equipped_by,is_new
-N001,Nuevas botas percepción,Perception,boots,6,16,Epic,SPD,45,"ACC:32|HP%:10|DEF%:12",,true
+N001,Nuevas botas percepción,Perception,boots,6,16,Epic,SPD,45,"ACC:32|HP%:10|DEF%:12",kael-01,true
 ```
 
 ## Cómo funciona el scoring

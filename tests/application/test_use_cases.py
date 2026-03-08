@@ -7,18 +7,20 @@ from rsl_advisor.application.use_cases import (
     edit_artifact,
     edit_champion,
     load_data,
+    query_artifacts,
+    query_champions,
     sync_csv_to_db,
 )
 from rsl_advisor.domain.models import Artifact, Champion
 
 
-CHAMPIONS_CSV = """name,rarity,role,level,stars,hp,atk,defense,speed,crit_rate,crit_damage,resistance,accuracy,preferred_sets,notes
-Kael,Rare,DPS / Farmer,60,6,24324,2966,1451,146,93,145,90,47,Lethal|Cruel,Farmer
-Rector Drath,Epic,Support / Revive,60,6,33790,1763,1877,119,39,80,85,57,Immortal|Speed,Revive
+CHAMPIONS_CSV = """champion_id,name,rarity,role,level,stars,hp,atk,defense,speed,crit_rate,crit_damage,resistance,accuracy,preferred_sets,notes
+kael-01,Kael,Rare,DPS / Farmer,60,6,24324,2966,1451,146,93,145,90,47,Lethal|Cruel,Farmer
+rector-01,Rector Drath,Epic,Support / Revive,60,6,33790,1763,1877,119,39,80,85,57,Immortal|Speed,Revive
 """
 
 ARTIFACTS_CSV = """artifact_id,name,set_name,slot,rank,level,rarity,main_stat,main_value,substats,equipped_by,is_new
-A001,Speed Boots Kael,Speed,boots,5,16,Epic,SPD,40,\"C.RATE:8|ATK%:12\",Kael,false
+A001,Speed Boots Kael,Speed,boots,5,16,Epic,SPD,40,\"C.RATE:8|ATK%:12\",kael-01,false
 N001,Nuevas botas,Perception,boots,6,16,Epic,SPD,45,\"ACC:32|HP%:10|DEF%:12\",,true
 """
 
@@ -66,6 +68,7 @@ def test_manual_add_commands_use_cases_persist_entities(tmp_path: Path):
     db_path = tmp_path / "raid.db"
 
     champion = Champion(
+        champion_id="manual-kael-01",
         name="Manual Kael",
         rarity="Rare",
         role="DPS / Farmer",
@@ -108,6 +111,7 @@ def test_manual_add_commands_use_cases_persist_entities(tmp_path: Path):
 def test_edit_champion_updates_selected_fields(tmp_path: Path):
     db_path = tmp_path / "raid.db"
     champion = Champion(
+        champion_id="edit-me-01",
         name="Edit Me",
         rarity="Rare",
         role="DPS / Farmer",
@@ -127,7 +131,7 @@ def test_edit_champion_updates_selected_fields(tmp_path: Path):
     add_champion(champion, str(db_path))
 
     updated = edit_champion(
-        "Edit Me",
+        "edit-me-01",
         str(db_path),
         level=60,
         speed=170,
@@ -157,7 +161,7 @@ def test_edit_artifact_updates_selected_fields_and_can_unequip(tmp_path: Path):
         main_stat="SPD",
         main_value=40,
         substats={"HP%": 5},
-        equipped_by="Edit Me",
+        equipped_by="edit-me-01",
         is_new=False,
     )
     add_artifact(artifact, str(db_path))
@@ -186,3 +190,55 @@ def test_edit_use_cases_return_false_when_entity_missing(tmp_path: Path):
     db_path = tmp_path / "raid.db"
     assert edit_champion("missing", str(db_path), level=60) is False
     assert edit_artifact("missing", str(db_path), level=16) is False
+
+
+def test_query_champions_filters_by_name_role_and_rarity(tmp_path: Path):
+    champions_csv = tmp_path / "champions.csv"
+    artifacts_csv = tmp_path / "artifacts.csv"
+    db_path = tmp_path / "raid.db"
+
+    _write_file(champions_csv, CHAMPIONS_CSV)
+    _write_file(artifacts_csv, ARTIFACTS_CSV)
+    sync_csv_to_db(str(champions_csv), str(artifacts_csv), str(db_path))
+
+    by_name = query_champions(str(db_path), name_contains="kael")
+    assert len(by_name) == 1
+    assert by_name[0].name == "Kael"
+
+    by_role = query_champions(str(db_path), role="support")
+    assert len(by_role) == 1
+    assert by_role[0].name == "Rector Drath"
+
+    by_rarity = query_champions(str(db_path), rarity="epic")
+    assert len(by_rarity) == 1
+    assert by_rarity[0].name == "Rector Drath"
+
+    by_id = query_champions(str(db_path), champion_id="kael-01")
+    assert len(by_id) == 1
+    assert by_id[0].champion_id == "kael-01"
+
+
+def test_query_artifacts_filters_by_fields(tmp_path: Path):
+    champions_csv = tmp_path / "champions.csv"
+    artifacts_csv = tmp_path / "artifacts.csv"
+    db_path = tmp_path / "raid.db"
+
+    _write_file(champions_csv, CHAMPIONS_CSV)
+    _write_file(artifacts_csv, ARTIFACTS_CSV)
+    sync_csv_to_db(str(champions_csv), str(artifacts_csv), str(db_path))
+
+    by_id = query_artifacts(str(db_path), artifact_id="N001")
+    assert len(by_id) == 1
+    assert by_id[0].artifact_id == "N001"
+
+    by_slot_and_set = query_artifacts(str(db_path), slot="boots", set_name="perception")
+    assert len(by_slot_and_set) == 1
+    assert by_slot_and_set[0].artifact_id == "N001"
+
+    by_equipped = query_artifacts(str(db_path), equipped_by="kael-01")
+    assert len(by_equipped) == 1
+    assert by_equipped[0].artifact_id == "A001"
+
+    only_new = query_artifacts(str(db_path), is_new=True)
+    assert len(only_new) == 1
+    assert only_new[0].artifact_id == "N001"

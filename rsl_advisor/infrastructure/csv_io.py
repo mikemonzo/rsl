@@ -27,10 +27,12 @@ def load_champions_csv(path: str) -> List[Champion]:
     champions: List[Champion] = []
     with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        for row in reader:
+        for idx, row in enumerate(reader, start=1):
             preferred_sets = [s.strip() for s in row.get("preferred_sets", "").split("|") if s.strip()]
+            champion_id = (row.get("champion_id") or "").strip() or f"champ-{idx:04d}"
             champions.append(
                 Champion(
+                    champion_id=champion_id,
                     name=row["name"],
                     rarity=row.get("rarity", ""),
                     role=row.get("role", ""),

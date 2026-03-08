@@ -69,7 +69,7 @@ def add_artifact(artifact: Artifact, db_path: str) -> None:
 
 
 def edit_champion(
-    champion_name: str,
+    champion_id: str,
     db_path: str,
     *,
     rarity: Optional[str] = None,
@@ -89,7 +89,7 @@ def edit_champion(
 ) -> bool:
     init_db(db_path)
     champions = load_champions(db_path)
-    target = next((champ for champ in champions if champ.name == champion_name), None)
+    target = next((champ for champ in champions if champ.champion_id == champion_id), None)
     if target is None:
         return False
 
@@ -162,3 +162,66 @@ def edit_artifact(
 
     save_artifacts([target], db_path)
     return True
+
+
+def query_champions(
+    db_path: str,
+    *,
+    champion_id: Optional[str] = None,
+    name_contains: Optional[str] = None,
+    role: Optional[str] = None,
+    rarity: Optional[str] = None,
+) -> List[Champion]:
+    init_db(db_path)
+    champions = load_champions(db_path)
+
+    champion_id_filter = champion_id.strip().lower() if champion_id else None
+    name_filter = name_contains.strip().lower() if name_contains else None
+    role_filter = role.strip().lower() if role else None
+    rarity_filter = rarity.strip().lower() if rarity else None
+
+    output: List[Champion] = []
+    for champion in champions:
+        if champion_id_filter and champion_id_filter not in champion.champion_id.lower():
+            continue
+        if name_filter and name_filter not in champion.name.lower():
+            continue
+        if role_filter and role_filter not in champion.role.lower():
+            continue
+        if rarity_filter and champion.rarity.lower() != rarity_filter:
+            continue
+        output.append(champion)
+    return output
+
+
+def query_artifacts(
+    db_path: str,
+    *,
+    artifact_id: Optional[str] = None,
+    slot: Optional[str] = None,
+    set_name: Optional[str] = None,
+    equipped_by: Optional[str] = None,
+    is_new: Optional[bool] = None,
+) -> List[Artifact]:
+    init_db(db_path)
+    artifacts = load_artifacts(db_path)
+
+    artifact_id_filter = artifact_id.strip().lower() if artifact_id else None
+    slot_filter = slot.strip().lower() if slot else None
+    set_filter = set_name.strip().lower() if set_name else None
+    equipped_filter = equipped_by.strip().lower() if equipped_by else None
+
+    output: List[Artifact] = []
+    for artifact in artifacts:
+        if artifact_id_filter and artifact_id_filter not in artifact.artifact_id.lower():
+            continue
+        if slot_filter and artifact.slot.lower() != slot_filter:
+            continue
+        if set_filter and artifact.set_name.lower() != set_filter:
+            continue
+        if equipped_filter and (artifact.equipped_by or "").lower() != equipped_filter:
+            continue
+        if is_new is not None and artifact.is_new is not is_new:
+            continue
+        output.append(artifact)
+    return output
