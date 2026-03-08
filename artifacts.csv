@@ -1,0 +1,6 @@
+artifact_id,name,set_name,slot,rank,level,rarity,main_stat,main_value,substats,equipped_by,is_new
+A001,Speed Boots Kael,Speed,boots,5,16,Epic,SPD,40,"C.RATE:8|ATK%:12|DEF:30",Kael,false
+A002,Perception Chest Tayrel,Perception,chest,5,16,Epic,ACC,60,"SPD:12|DEF%:10|HP%:8",Tayrel,false
+A003,Immortal Gloves Rector,Immortal,gloves,5,16,Epic,HP%,50,"SPD:9|RES:18|DEF%:12",Rector Drath,false
+N001,Nuevas botas percepción,Perception,boots,6,16,Epic,SPD,45,"ACC:32|HP%:10|DEF%:12",,true
+N002,Nuevos guantes letales,Lethal,gloves,6,16,Epic,C.RATE,60,"C.DMG:20|ATK%:15|SPD:8",,true
