@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -23,6 +24,7 @@ from rsl_advisor.infrastructure.csv_io import parse_substats
 from rsl_advisor.infrastructure.persistence import init_db
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
+DEFAULT_DB_TARGET = os.getenv("DATABASE_URL", "advisor.db")
 
 
 def _validate_source(source: str) -> str:
@@ -32,7 +34,7 @@ def _validate_source(source: str) -> str:
     return source_value
 
 
-def _print_sync_result(champions_count: int, artifacts_count: int, db: Path) -> None:
+def _print_sync_result(champions_count: int, artifacts_count: int, db: str) -> None:
     typer.echo(
         f"Sincronizacion completada: {champions_count} campeones y "
         f"{artifacts_count} artefactos guardados en {db}"
@@ -62,9 +64,11 @@ def _fmt_substats(substats: dict[str, float]) -> str:
 
 @app.command("init-db")
 def init_db_command(
-    db: Path = typer.Option(Path("raid_advisor.db"), "--db", help="Ruta de SQLite"),
+    db: str = typer.Option(
+        DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
+    ),
 ) -> None:
-    init_db(str(db))
+    init_db(db)
     typer.echo(f"Base de datos inicializada: {db}")
 
 
@@ -76,10 +80,12 @@ def sync_command(
     artifacts_csv: Path = typer.Option(
         Path("artifacts.csv"), "--artifacts-csv", help="CSV de artefactos"
     ),
-    db: Path = typer.Option(Path("raid_advisor.db"), "--db", help="Ruta de SQLite"),
+    db: str = typer.Option(
+        DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
+    ),
 ) -> None:
     champions_count, artifacts_count = sync_csv_to_db(
-        str(champions_csv), str(artifacts_csv), str(db)
+        str(champions_csv), str(artifacts_csv), db
     )
     _print_sync_result(champions_count, artifacts_count, db)
 
@@ -106,7 +112,9 @@ def add_champion_command(
         help="Sets preferidos separados por |. Ej: Speed|Perception",
     ),
     notes: str = typer.Option("", "--notes", help="Notas del campeon"),
-    db: Path = typer.Option(Path("raid_advisor.db"), "--db", help="Ruta de SQLite"),
+    db: str = typer.Option(
+        DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
+    ),
 ) -> None:
     champion = Champion(
         champion_id=champion_id,
@@ -126,7 +134,7 @@ def add_champion_command(
         preferred_sets=_parse_pipe_values(preferred_sets),
         notes=notes,
     )
-    add_champion(champion, str(db))
+    add_champion(champion, db)
     typer.echo(f"Campeon guardado: {champion_id} ({name})")
 
 
@@ -148,7 +156,9 @@ def add_artifact_command(
     ),
     equipped_by: str = typer.Option("", "--equipped-by", help="ID del campeon equipado"),
     is_new: bool = typer.Option(False, "--is-new", help="Marcar como artefacto nuevo"),
-    db: Path = typer.Option(Path("raid_advisor.db"), "--db", help="Ruta de SQLite"),
+    db: str = typer.Option(
+        DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
+    ),
 ) -> None:
     artifact = Artifact(
         artifact_id=artifact_id,
@@ -164,7 +174,7 @@ def add_artifact_command(
         equipped_by=equipped_by.strip() or None,
         is_new=is_new,
     )
-    add_artifact(artifact, str(db))
+    add_artifact(artifact, db)
     typer.echo(f"Artefacto guardado: {artifact_id}")
 
 
@@ -189,11 +199,13 @@ def edit_champion_command(
         help="Sets preferidos separados por |. Ej: Speed|Perception",
     ),
     notes: Optional[str] = typer.Option(None, "--notes"),
-    db: Path = typer.Option(Path("raid_advisor.db"), "--db", help="Ruta de SQLite"),
+    db: str = typer.Option(
+        DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
+    ),
 ) -> None:
     updated = edit_champion(
         champion_id,
-        str(db),
+        db,
         rarity=rarity,
         role=role,
         level=level,
@@ -231,11 +243,13 @@ def edit_artifact_command(
         None, "--equipped-by", help="ID del campeon equipado (vacio para quitar equipado)"
     ),
     is_new: Optional[str] = typer.Option(None, "--is-new", help="true/false"),
-    db: Path = typer.Option(Path("raid_advisor.db"), "--db", help="Ruta de SQLite"),
+    db: str = typer.Option(
+        DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
+    ),
 ) -> None:
     updated = edit_artifact(
         artifact_id,
-        str(db),
+        db,
         name=name,
         set_name=set_name,
         slot=slot,
@@ -260,10 +274,12 @@ def list_champions_command(
     name_contains: Optional[str] = typer.Option(None, "--name-contains"),
     role: Optional[str] = typer.Option(None, "--role"),
     rarity: Optional[str] = typer.Option(None, "--rarity"),
-    db: Path = typer.Option(Path("raid_advisor.db"), "--db", help="Ruta de SQLite"),
+    db: str = typer.Option(
+        DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
+    ),
 ) -> None:
     champions = query_champions(
-        str(db), champion_id=champion_id, name_contains=name_contains, role=role, rarity=rarity
+        db, champion_id=champion_id, name_contains=name_contains, role=role, rarity=rarity
     )
     if not champions:
         typer.echo("No se encontraron campeones.")
@@ -285,10 +301,12 @@ def list_artifacts_command(
     set_name: Optional[str] = typer.Option(None, "--set-name"),
     equipped_by: Optional[str] = typer.Option(None, "--equipped-by", help="ID del campeon equipado"),
     is_new: Optional[str] = typer.Option(None, "--is-new", help="true/false"),
-    db: Path = typer.Option(Path("raid_advisor.db"), "--db", help="Ruta de SQLite"),
+    db: str = typer.Option(
+        DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
+    ),
 ) -> None:
     artifacts = query_artifacts(
-        str(db),
+        db,
         artifact_id=artifact_id,
         slot=slot,
         set_name=set_name,
@@ -313,7 +331,9 @@ def list_artifacts_command(
 @app.command("recommend")
 def recommend_command(
     source: str = typer.Option("db", "--source", help="Origen de datos: db o csv"),
-    db: Path = typer.Option(Path("raid_advisor.db"), "--db", help="Ruta de SQLite"),
+    db: str = typer.Option(
+        DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
+    ),
     champions_csv: Path = typer.Option(
         Path("champions.csv"), "--champions-csv", help="CSV de campeones"
     ),
@@ -331,12 +351,12 @@ def recommend_command(
 
     if sync_csv:
         champions_count, artifacts_count = sync_csv_to_db(
-            str(champions_csv), str(artifacts_csv), str(db)
+            str(champions_csv), str(artifacts_csv), db
         )
         _print_sync_result(champions_count, artifacts_count, db)
 
     champions, artifacts = load_data(
-        source_value, str(db), str(champions_csv), str(artifacts_csv)
+        source_value, db, str(champions_csv), str(artifacts_csv)
     )
 
     if not champions or not artifacts:

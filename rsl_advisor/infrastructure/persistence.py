@@ -84,12 +84,33 @@ REQUIRED_DB_COLUMNS = {
 }
 
 
-def get_engine(db_path: str):
-    return create_engine(f"sqlite:///{db_path}", echo=False)
+def _is_database_url(db_target: str) -> bool:
+    return "://" in db_target
 
 
-def _drop_legacy_tables_if_needed(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+def _resolve_database_url(db_target: str) -> str:
+    if _is_database_url(db_target):
+        return db_target
+    return f"sqlite:///{db_target}"
+
+
+def _sqlite_file_from_target(db_target: str) -> Optional[str]:
+    db_url = _resolve_database_url(db_target)
+    if not db_url.startswith("sqlite:///"):
+        return None
+    return db_url.removeprefix("sqlite:///")
+
+
+def get_engine(db_target: str):
+    return create_engine(_resolve_database_url(db_target), echo=False, pool_pre_ping=True)
+
+
+def _drop_legacy_tables_if_needed(db_target: str) -> None:
+    sqlite_file = _sqlite_file_from_target(db_target)
+    if not sqlite_file:
+        return
+
+    with sqlite3.connect(sqlite_file) as conn:
         for table, required in REQUIRED_DB_COLUMNS.items():
             cols = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
             if cols and not required.issubset(cols):
@@ -97,9 +118,9 @@ def _drop_legacy_tables_if_needed(db_path: str) -> None:
         conn.commit()
 
 
-def init_db(db_path: str) -> None:
-    _drop_legacy_tables_if_needed(db_path)
-    SQLModel.metadata.create_all(get_engine(db_path))
+def init_db(db_target: str) -> None:
+    _drop_legacy_tables_if_needed(db_target)
+    SQLModel.metadata.create_all(get_engine(db_target))
 
 
 def champion_to_db(champion: Champion) -> ChampionDB:
@@ -180,27 +201,27 @@ def artifact_from_db(row: ArtifactDB) -> Artifact:
     )
 
 
-def save_champions(champions: List[Champion], db_path: str) -> None:
-    with Session(get_engine(db_path)) as session:
+def save_champions(champions: List[Champion], db_target: str) -> None:
+    with Session(get_engine(db_target)) as session:
         for champion in champions:
             session.merge(champion_to_db(champion))
         session.commit()
 
 
-def save_artifacts(artifacts: List[Artifact], db_path: str) -> None:
-    with Session(get_engine(db_path)) as session:
+def save_artifacts(artifacts: List[Artifact], db_target: str) -> None:
+    with Session(get_engine(db_target)) as session:
         for artifact in artifacts:
             session.merge(artifact_to_db(artifact))
         session.commit()
 
 
-def load_champions(db_path: str) -> List[Champion]:
-    with Session(get_engine(db_path)) as session:
+def load_champions(db_target: str) -> List[Champion]:
+    with Session(get_engine(db_target)) as session:
         rows = session.exec(select(ChampionDB).order_by(ChampionDB.name, ChampionDB.champion_id)).all()
     return [champion_from_db(row) for row in rows]
 
 
-def load_artifacts(db_path: str) -> List[Artifact]:
-    with Session(get_engine(db_path)) as session:
+def load_artifacts(db_target: str) -> List[Artifact]:
+    with Session(get_engine(db_target)) as session:
         rows = session.exec(select(ArtifactDB).order_by(ArtifactDB.artifact_id)).all()
     return [artifact_from_db(row) for row in rows]

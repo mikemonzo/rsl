@@ -7,7 +7,7 @@ Aplicación para evaluar qué campeón aprovecha mejor los artefactos nuevos en 
 - Carga de datos de campeones y artefactos desde CSV.
 - Carga manual de campeones y artefactos desde CLI.
 - Edicion manual parcial de campeones y artefactos desde CLI.
-- Persistencia en SQLite usando SQLModel.
+- Persistencia en SQLite o PostgreSQL usando SQLModel.
 - Recomendación de artefactos nuevos (`is_new=true`) por campeón.
 - Comparación `nuevo` vs `actual` por slot con cálculo de mejora (`delta`).
 - CLI con Typer para inicializar base de datos, sincronizar datos y generar recomendaciones.
@@ -26,6 +26,7 @@ Aplicación para evaluar qué campeón aprovecha mejor los artefactos nuevos en 
 
 - Python 3.9+
 - Entorno virtual recomendado
+- Docker + Docker Compose (modo contenedores)
 
 ## Instalación
 
@@ -184,10 +185,50 @@ pip install -r requirements-dev.txt
 ### Opciones útiles
 
 - `--top-n`: cantidad de campeones a mostrar por artefacto.
-- `--db`: ruta del archivo SQLite.
+- `--db`: ruta del archivo SQLite o `DATABASE_URL` (ejemplo PostgreSQL).
 - `--source`: origen de datos (`db` o `csv`).
 - `list-champions`: filtros por `--champion-id`, `--name-contains`, `--role`, `--rarity`.
 - `list-artifacts`: filtros por `--artifact-id`, `--slot`, `--set-name`, `--equipped-by`, `--is-new`.
+
+## Modo contenedores (multi-servicio)
+
+El proyecto incluye `docker-compose.yml` con 3 servicios:
+
+- `db`: PostgreSQL (ligero con imagen `postgres:alpine`).
+- `controller`: backend actual (CLI Typer + lógica DDD).
+- `view`: placeholder frontend en `nginx` (se desarrollará más adelante).
+
+Archivos clave:
+
+- `Dockerfile`
+- `docker-compose.yml`
+- `.env.example`
+- `view/index.html`
+
+### Levantar servicios
+
+```bash
+docker compose up -d --build
+```
+
+### Ejecutar comandos del backend dentro del contenedor `controller`
+
+```bash
+docker compose exec controller python rsl.py init-db
+docker compose exec controller python rsl.py sync --champions-csv champions.csv --artifacts-csv artifacts.csv
+docker compose exec controller python rsl.py recommend --source db
+```
+
+`controller` usa por defecto:
+
+```text
+DATABASE_URL=postgresql+psycopg://rsl:rsl@db:5432/rsl_advisor
+```
+
+### Frontend placeholder
+
+- URL: `http://localhost:8080`
+- Actualmente muestra una página de placeholder.
 
 ## Formato de entrada CSV
 

@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rsl-db
+    environment:
+      POSTGRES_DB: rsl_advisor
+      POSTGRES_USER: rsl
+      POSTGRES_PASSWORD: rsl
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rsl -d rsl_advisor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  controller:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rsl-controller
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://rsl:rsl@db:5432/rsl_advisor
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: ["sleep", "infinity"]
+
+  view:
+    image: nginx:alpine
+    container_name: rsl-view
+    ports:
+      - "8080:80"
+    volumes:
+      - ./view:/usr/share/nginx/html:ro
+
+volumes:
+  db_data:
