@@ -1,6 +1,6 @@
-name,rarity,role,level,stars,hp,atk,defense,speed,crit_rate,crit_damage,resistance,accuracy,preferred_sets,notes
-Kael,Rare,DPS / Farmer,60,6,24324,2966,1451,146,93,145,90,47,Lethal|Cruel,Farmer y daño general
-Frozen Banshee,Rare,Clan Boss Poison,60,6,24462,2148,1806,165,30,78,51,206,Perception|Speed,CB venenos
-Tuhanarak,Legendary,Support / Cleanse,60,6,34765,1811,1857,145,32,76,102,57,Speed|Perception|Immortal,Soporte general
-Rector Drath,Epic,Support / Revive,60,6,33790,1763,1877,119,39,80,85,57,Immortal|Speed,Revive y sustain
-Tayrel,Epic,Debuffer / Control,60,6,28671,1374,2435,152,25,70,30,89,Perception|Speed,Decrease DEF y control
+champion_id,name,rarity,role,level,stars,hp,atk,defense,speed,crit_rate,crit_damage,resistance,accuracy,preferred_sets,notes
+kael-01,Kael,Rare,DPS / Farmer,60,6,24324,2966,1451,146,93,145,90,47,Lethal|Cruel,Farmer y daño general
+frozen-banshee-01,Frozen Banshee,Rare,Clan Boss Poison,60,6,24462,2148,1806,165,30,78,51,206,Perception|Speed,CB venenos
+tuhanarak-01,Tuhanarak,Legendary,Support / Cleanse,60,6,34765,1811,1857,145,32,76,102,57,Speed|Perception|Immortal,Soporte general
+rector-drath-01,Rector Drath,Epic,Support / Revive,60,6,33790,1763,1877,119,39,80,85,57,Immortal|Speed,Revive y sustain
+tayrel-01,Tayrel,Epic,Debuffer / Control,60,6,28671,1374,2435,152,25,70,30,89,Perception|Speed,Decrease DEF y control
