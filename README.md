@@ -11,15 +11,18 @@ Aplicación para evaluar qué campeón aprovecha mejor los artefactos nuevos en 
 - Recomendación de artefactos nuevos (`is_new=true`) por campeón.
 - Comparación `nuevo` vs `actual` por slot con cálculo de mejora (`delta`).
 - CLI con Typer para inicializar base de datos, sincronizar datos y generar recomendaciones.
+- API REST con FastAPI para CRUD de campeones y artefactos.
 - Arquitectura refactorizada con enfoque DDD (Domain, Application, Infrastructure, Interfaces).
 
 ## Estructura del proyecto
 
 - `rsl.py`: punto de entrada de la CLI.
-- `advisor/domain/`: entidades y lógica de negocio (scoring).
-- `advisor/application/`: casos de uso.
-- `advisor/infrastructure/`: CSV y persistencia SQLModel/SQLite.
-- `advisor/interfaces/`: capa CLI (Typer).
+- `api.py`: punto de entrada de FastAPI.
+- `rsl_advisor/domain/`: entidades y lógica de negocio (scoring).
+- `rsl_advisor/application/`: casos de uso.
+- `rsl_advisor/infrastructure/`: CSV y persistencia SQLModel/SQLite/PostgreSQL.
+- `rsl_advisor/interfaces/cli.py`: capa CLI (Typer).
+- `rsl_advisor/interfaces/api.py`: capa HTTP (FastAPI).
 - `tests/`: pruebas unitarias y de aplicación.
 
 ## Requisitos
@@ -55,6 +58,11 @@ pip install -r requirements-dev.txt
 ```
 
 ## Uso de la aplicación
+
+### Interfaces disponibles
+
+- CLI operativa (`rsl.py`) para administración y operaciones.
+- API REST (`api.py`) para integración con frontend.
 
 ### 1) Inicializar base de datos
 
@@ -190,6 +198,43 @@ pip install -r requirements-dev.txt
 - `list-champions`: filtros por `--champion-id`, `--name-contains`, `--role`, `--rarity`.
 - `list-artifacts`: filtros por `--artifact-id`, `--slot`, `--set-name`, `--equipped-by`, `--is-new`.
 
+## API FastAPI (CRUD)
+
+### Ejecutar API en local
+
+```bash
+.venv/bin/python api.py
+```
+
+API disponible en `http://localhost:8000`.
+
+### Documentación interactiva
+
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+### Endpoints
+
+Auxiliar:
+
+- `GET /health`
+
+Campeones (CRUD):
+
+- `GET /champions`
+- `POST /champions`
+- `GET /champions/{champion_id}`
+- `PATCH /champions/{champion_id}`
+- `DELETE /champions/{champion_id}`
+
+Artefactos (CRUD):
+
+- `GET /artifacts`
+- `POST /artifacts`
+- `GET /artifacts/{artifact_id}`
+- `PATCH /artifacts/{artifact_id}`
+- `DELETE /artifacts/{artifact_id}`
+
 ## Modo contenedores (multi-servicio)
 
 El proyecto incluye `docker-compose.yml` con 3 servicios:
@@ -218,6 +263,9 @@ docker compose exec controller python rsl.py init-db
 docker compose exec controller python rsl.py sync --champions-csv champions.csv --artifacts-csv artifacts.csv
 docker compose exec controller python rsl.py recommend --source db
 ```
+
+`controller` arranca FastAPI por defecto en `http://localhost:8000`.
+La CLI sigue disponible con `docker compose exec controller python rsl.py ...`.
 
 `controller` usa por defecto:
 
@@ -294,16 +342,17 @@ Actualmente incluye pruebas para:
 - Ranking de recomendaciones
 - Sincronización CSV -> DB
 - Construcción de recomendaciones para artefactos nuevos
+- CRUD HTTP de campeones y artefactos (FastAPI)
 
 ## Limitaciones actuales
 
 - Heurística configurable, no optimizador exhaustivo de builds.
 - No contempla restricciones avanzadas de speed tuning o sinergias de set complejas.
-- No incluye interfaz web (solo CLI).
+- Frontend aún no implementado (solo placeholder `view`).
 
 ## Roadmap sugerido
 
 - Exportar recomendaciones a JSON/CSV.
 - Añadir tests de CLI con `CliRunner`.
-- Añadir endpoint API (FastAPI) para integrar con frontend.
+- Integrar frontend con la API FastAPI.
 - Introducir migraciones formales de base de datos.

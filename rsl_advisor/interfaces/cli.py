@@ -6,60 +6,21 @@ from typing import Optional
 
 import typer
 
-from rsl_advisor.application.use_cases import (
-    add_artifact,
-    add_champion,
-    build_recommendations,
-    edit_artifact,
-    edit_champion,
-    load_data,
-    recommendation_reason,
-    query_artifacts,
-    query_champions,
-    sync_csv_to_db,
+from rsl_advisor.interfaces.cli_handlers.artifacts import (
+    add_artifact_handler,
+    edit_artifact_handler,
+    list_artifacts_handler,
 )
-from rsl_advisor.domain.models import Artifact, Champion
-from rsl_advisor.domain.scoring import normalise_stat_name
-from rsl_advisor.infrastructure.csv_io import parse_substats
-from rsl_advisor.infrastructure.persistence import init_db
+from rsl_advisor.interfaces.cli_handlers.champions import (
+    add_champion_handler,
+    edit_champion_handler,
+    list_champions_handler,
+)
+from rsl_advisor.interfaces.cli_handlers.recommendations import recommend_handler
+from rsl_advisor.interfaces.cli_handlers.system import init_db_handler, sync_handler
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 DEFAULT_DB_TARGET = os.getenv("DATABASE_URL", "advisor.db")
-
-
-def _validate_source(source: str) -> str:
-    source_value = source.lower().strip()
-    if source_value not in {"db", "csv"}:
-        raise typer.BadParameter("--source debe ser 'db' o 'csv'.")
-    return source_value
-
-
-def _print_sync_result(champions_count: int, artifacts_count: int, db: str) -> None:
-    typer.echo(
-        f"Sincronizacion completada: {champions_count} campeones y "
-        f"{artifacts_count} artefactos guardados en {db}"
-    )
-
-
-def _parse_pipe_values(raw: str) -> list[str]:
-    return [value.strip() for value in raw.split("|") if value.strip()]
-
-
-def _parse_optional_bool(raw: Optional[str], option_name: str) -> Optional[bool]:
-    if raw is None:
-        return None
-    value = raw.strip().lower()
-    if value in {"true", "1", "yes", "y"}:
-        return True
-    if value in {"false", "0", "no", "n"}:
-        return False
-    raise typer.BadParameter(f"{option_name} debe ser true o false.")
-
-
-def _fmt_substats(substats: dict[str, float]) -> str:
-    if not substats:
-        return "-"
-    return "|".join(f"{stat}:{value:g}" for stat, value in substats.items())
 
 
 @app.command("init-db")
@@ -68,7 +29,7 @@ def init_db_command(
         DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
     ),
 ) -> None:
-    init_db(db)
+    init_db_handler(db)
     typer.echo(f"Base de datos inicializada: {db}")
 
 
@@ -84,10 +45,7 @@ def sync_command(
         DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
     ),
 ) -> None:
-    champions_count, artifacts_count = sync_csv_to_db(
-        str(champions_csv), str(artifacts_csv), db
-    )
-    _print_sync_result(champions_count, artifacts_count, db)
+    sync_handler(str(champions_csv), str(artifacts_csv), db)
 
 
 @app.command("add-champion")
@@ -116,7 +74,7 @@ def add_champion_command(
         DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
     ),
 ) -> None:
-    champion = Champion(
+    add_champion_handler(
         champion_id=champion_id,
         name=name,
         rarity=rarity,
@@ -131,11 +89,10 @@ def add_champion_command(
         crit_damage=crit_damage,
         resistance=resistance,
         accuracy=accuracy,
-        preferred_sets=_parse_pipe_values(preferred_sets),
+        preferred_sets=preferred_sets,
         notes=notes,
+        db=db,
     )
-    add_champion(champion, db)
-    typer.echo(f"Campeon guardado: {champion_id} ({name})")
 
 
 @app.command("add-artifact")
@@ -160,7 +117,7 @@ def add_artifact_command(
         DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
     ),
 ) -> None:
-    artifact = Artifact(
+    add_artifact_handler(
         artifact_id=artifact_id,
         name=name,
         set_name=set_name,
@@ -168,14 +125,13 @@ def add_artifact_command(
         rank=rank,
         level=level,
         rarity=rarity,
-        main_stat=normalise_stat_name(main_stat),
+        main_stat=main_stat,
         main_value=main_value,
-        substats=parse_substats(substats),
-        equipped_by=equipped_by.strip() or None,
+        substats=substats,
+        equipped_by=equipped_by,
         is_new=is_new,
+        db=db,
     )
-    add_artifact(artifact, db)
-    typer.echo(f"Artefacto guardado: {artifact_id}")
 
 
 @app.command("edit-champion")
@@ -203,9 +159,8 @@ def edit_champion_command(
         DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
     ),
 ) -> None:
-    updated = edit_champion(
-        champion_id,
-        db,
+    edit_champion_handler(
+        champion_id=champion_id,
         rarity=rarity,
         role=role,
         level=level,
@@ -218,13 +173,10 @@ def edit_champion_command(
         crit_damage=crit_damage,
         resistance=resistance,
         accuracy=accuracy,
-        preferred_sets=_parse_pipe_values(preferred_sets) if preferred_sets is not None else None,
+        preferred_sets=preferred_sets,
         notes=notes,
+        db=db,
     )
-    if not updated:
-        typer.echo(f"No existe campeon con id: {champion_id}")
-        raise typer.Exit(code=1)
-    typer.echo(f"Campeon actualizado: {champion_id}")
 
 
 @app.command("edit-artifact")
@@ -247,25 +199,21 @@ def edit_artifact_command(
         DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
     ),
 ) -> None:
-    updated = edit_artifact(
-        artifact_id,
-        db,
+    edit_artifact_handler(
+        artifact_id=artifact_id,
         name=name,
         set_name=set_name,
         slot=slot,
         rank=rank,
         level=level,
         rarity=rarity,
-        main_stat=normalise_stat_name(main_stat) if main_stat is not None else None,
+        main_stat=main_stat,
         main_value=main_value,
-        substats=parse_substats(substats) if substats is not None else None,
+        substats=substats,
         equipped_by=equipped_by,
-        is_new=_parse_optional_bool(is_new, "--is-new"),
+        is_new=is_new,
+        db=db,
     )
-    if not updated:
-        typer.echo(f"No existe artefacto con id: {artifact_id}")
-        raise typer.Exit(code=1)
-    typer.echo(f"Artefacto actualizado: {artifact_id}")
 
 
 @app.command("list-champions")
@@ -278,20 +226,13 @@ def list_champions_command(
         DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
     ),
 ) -> None:
-    champions = query_champions(
-        db, champion_id=champion_id, name_contains=name_contains, role=role, rarity=rarity
+    list_champions_handler(
+        champion_id=champion_id,
+        name_contains=name_contains,
+        role=role,
+        rarity=rarity,
+        db=db,
     )
-    if not champions:
-        typer.echo("No se encontraron campeones.")
-        return
-
-    typer.echo(f"Campeones encontrados: {len(champions)}")
-    for champion in champions:
-        preferred_sets = "|".join(champion.preferred_sets) if champion.preferred_sets else "-"
-        typer.echo(
-            f"- {champion.champion_id} | {champion.name} | rarity={champion.rarity} | role={champion.role} | "
-            f"lvl={champion.level} | stars={champion.stars} | sets={preferred_sets}"
-        )
 
 
 @app.command("list-artifacts")
@@ -305,27 +246,14 @@ def list_artifacts_command(
         DEFAULT_DB_TARGET, "--db", help="Ruta SQLite o URL de base de datos"
     ),
 ) -> None:
-    artifacts = query_artifacts(
-        db,
+    list_artifacts_handler(
         artifact_id=artifact_id,
         slot=slot,
         set_name=set_name,
         equipped_by=equipped_by,
-        is_new=_parse_optional_bool(is_new, "--is-new"),
+        is_new=is_new,
+        db=db,
     )
-    if not artifacts:
-        typer.echo("No se encontraron artefactos.")
-        return
-
-    typer.echo(f"Artefactos encontrados: {len(artifacts)}")
-    for artifact in artifacts:
-        equipped = artifact.equipped_by or "-"
-        typer.echo(
-            f"- {artifact.artifact_id} | {artifact.name} | set={artifact.set_name} | "
-            f"slot={artifact.slot} | main={artifact.main_stat} {artifact.main_value:g} | "
-            f"substats={_fmt_substats(artifact.substats)} | equipped_by={equipped} | "
-            f"is_new={artifact.is_new}"
-        )
 
 
 @app.command("recommend")
@@ -347,49 +275,11 @@ def recommend_command(
         5, "--top-n", min=1, max=20, help="Numero de recomendaciones por artefacto"
     ),
 ) -> None:
-    source_value = _validate_source(source)
-
-    if sync_csv:
-        champions_count, artifacts_count = sync_csv_to_db(
-            str(champions_csv), str(artifacts_csv), db
-        )
-        _print_sync_result(champions_count, artifacts_count, db)
-
-    champions, artifacts = load_data(
-        source_value, db, str(champions_csv), str(artifacts_csv)
+    recommend_handler(
+        source=source,
+        db=db,
+        champions_csv=str(champions_csv),
+        artifacts_csv=str(artifacts_csv),
+        sync_csv=sync_csv,
+        top_n=top_n,
     )
-
-    if not champions or not artifacts:
-        typer.echo(
-            "No hay datos suficientes para evaluar. "
-            "Usa 'sync' o --sync-csv para cargar CSV en la base de datos."
-        )
-        raise typer.Exit(code=1)
-
-    champions_by_id = {champion.champion_id: champion for champion in champions}
-    recommendation_groups = build_recommendations(champions, artifacts, top_n=top_n)
-
-    if not recommendation_groups:
-        typer.echo("No hay artefactos marcados como nuevos (is_new=true).")
-        return
-
-    for group in recommendation_groups:
-        artifact = group.artifact
-        typer.echo("=" * 90)
-        typer.echo(
-            f"ARTEFACTO: {artifact.name} | set={artifact.set_name} | slot={artifact.slot} | "
-            f"main={artifact.main_stat} {artifact.main_value} | substats={artifact.substats}"
-        )
-
-        for idx, row in enumerate(group.ranking, start=1):
-            champion = champions_by_id.get(row.champion_id)
-            if champion is None:
-                continue
-            reason = recommendation_reason(champion, artifact)
-            current_desc = row.current_item or "sin artefacto equipado en ese slot"
-            typer.echo(
-                f"{idx}. {row.champion_name} [{row.champion_id}] ({row.role}) -> nuevo={row.new_score} | "
-                f"actual={row.current_score} | mejora={row.delta} | actual={current_desc}"
-            )
-            typer.echo(f"   Motivo: {reason}")
-        typer.echo("")

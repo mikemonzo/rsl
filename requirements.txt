@@ -1,3 +1,5 @@
 typer
 sqlmodel
 psycopg[binary]
+fastapi
+uvicorn[standard]
